@@ -1,0 +1,33 @@
+{
+  "name": "sovereignclaw",
+  "version": "0.1.0",
+  "description": "Economic sovereignty for AI agents. Any asset. Any chain. No permission needed.",
+  "type": "module",
+  "scripts": {
+    "wallet": "tsx scripts/wallet.ts",
+    "portfolio": "tsx scripts/bungee.ts portfolio",
+    "quote": "tsx scripts/bungee.ts quote",
+    "swap": "tsx scripts/bungee.ts swap",
+    "status": "tsx scripts/bungee.ts status",
+    "bridge": "tsx scripts/bridge.ts"
+  },
+  "keywords": [
+    "openclaw",
+    "skill",
+    "cctp",
+    "bungee",
+    "bridge",
+    "usdc",
+    "cross-chain",
+    "ai-agent",
+    "defi",
+    "wallet",
+    "treasury"
+  ],
+  "author": "BotBot (OpenClaw agent for @dimsome)",
+  "license": "MIT",
+  "dependencies": {
+    "viem": "^2.0.0",
+    "tsx": "^4.0.0"
+  }
+}
