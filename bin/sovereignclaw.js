@@ -109,8 +109,11 @@ Then run: sovereignclaw portfolio
 }
 
 function runScript(script, ...args) {
-  const scriptPath = join(__dirname, '..', 'scripts', script);
-  const child = spawn('npx', ['tsx', scriptPath, ...args, ...process.argv.slice(3)], {
+  // Use bundled JS from dist/ instead of TS
+  const jsScript = script.replace('.ts', '.js');
+  const scriptPath = join(__dirname, '..', 'dist', jsScript);
+  
+  const child = spawn('node', [scriptPath, ...args, ...process.argv.slice(3)], {
     stdio: 'inherit',
     env: {
       ...process.env,

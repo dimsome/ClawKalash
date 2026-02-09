@@ -1,18 +1,20 @@
 {
   "name": "sovereignclaw",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Economic sovereignty for AI agents. Any asset. Any chain. No permission needed.",
   "type": "module",
   "bin": {
-    "sovereignclaw": "./bin/sovereignclaw.js"
+    "sovereignclaw": "bin/sovereignclaw.js"
   },
   "files": [
     "bin",
-    "scripts",
+    "dist",
     "SKILL.md",
     "README.md"
   ],
   "scripts": {
+    "build": "esbuild scripts/bungee.ts scripts/bridge.ts scripts/wallet.ts --bundle --platform=node --outdir=dist --format=esm --external:viem",
+    "prepublishOnly": "npm run build",
     "wallet": "tsx scripts/wallet.ts",
     "portfolio": "tsx scripts/bungee.ts portfolio",
     "quote": "tsx scripts/bungee.ts quote",
@@ -38,11 +40,15 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dimsome/sovereignclaw"
+    "url": "git+https://github.com/dimsome/sovereignclaw.git"
   },
   "homepage": "https://github.com/dimsome/sovereignclaw#readme",
   "dependencies": {
-    "viem": "^2.0.0",
-    "tsx": "^4.0.0"
+    "viem": "^2.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3",
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.3"
   }
 }
