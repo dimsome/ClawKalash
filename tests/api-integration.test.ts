@@ -1,11 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { searchTokens, resolveToken, getQuote, getTokenBalances, getStatus } from '../scripts/api.js';
 
 const TEST_ADDRESS = '0x02Bc8c352b58d929Cc3D60545511872c85F30650';
 const USDC_BASE = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
 const USDC_ARB = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
 describe('API Integration Tests', () => {
+  // Rate limit: pause between each test
+  beforeEach(async () => { await sleep(1500); });
+
   describe('searchTokens', () => {
     it('returns results for USDC', async () => {
       const results = await searchTokens('USDC');
