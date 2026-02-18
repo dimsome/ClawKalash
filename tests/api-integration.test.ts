@@ -121,7 +121,7 @@ describe('API Integration Tests', () => {
       const results = await getStatus('0xa6b977a6d65f2be870bd7b2b1464d15759a69aa4b321bffafa1f8cbf19343c58');
       expect(Array.isArray(results)).toBe(true);
       expect(results.length).toBeGreaterThan(0);
-      expect(results[0]).toHaveProperty('status');
+      expect(results[0]).toHaveProperty('bungeeStatusCode');
     });
 
     it('throws for invalid request hash', async () => {
