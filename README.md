@@ -14,7 +14,7 @@ export WALLET_KEY="your-secret-key"
 ck wallet-create
 ```
 
-Your OpenClaw / Claw'd bot now has cross-chain access.
+Your OpenClaw / Claw'd bot now has economic sovereignty. Create a wallet or import an existing one and it can manage your assets. Swap tokens, bridge assets, and more...
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐

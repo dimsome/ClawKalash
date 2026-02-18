@@ -99,6 +99,8 @@ export interface TokenSearchResult {
   symbol: string;
   decimals: number;
   icon?: string;
+  isVerified?: boolean;
+  isShortListed?: boolean;
 }
 
 export const STATUS_CODES: Record<number, string> = {

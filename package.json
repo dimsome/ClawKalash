@@ -16,6 +16,7 @@
   "scripts": {
     "build": "esbuild scripts/cli.ts scripts/wallet.ts --bundle --platform=node --outdir=dist --format=esm --external:viem",
     "prepublishOnly": "npm run build",
+    "lint": "tsc --noEmit",
     "test": "vitest run --exclude tests/api-integration.test.ts",
     "test:api": "vitest run tests/api-integration.test.ts",
     "test:all": "vitest run",
@@ -48,6 +49,7 @@
     "viem": "^2.0.0"
   },
   "devDependencies": {
+    "@types/node": "^25.2.3",
     "esbuild": "^0.27.3",
     "tsx": "^4.0.0",
     "typescript": "^5.9.3",
