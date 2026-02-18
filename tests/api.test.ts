@@ -69,7 +69,7 @@ describe('searchTokens (mocked)', () => {
   };
 
   function mockFetch(data: any) {
-    globalThis.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({ status: 200, headers: new Headers({ 'content-type': 'application/json' }),
       json: () => Promise.resolve(data),
     } as any);
   }
@@ -133,7 +133,7 @@ describe('resolveToken (mocked)', () => {
   };
 
   function mockFetch(data: any) {
-    globalThis.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({ status: 200, headers: new Headers({ 'content-type': 'application/json' }),
       json: () => Promise.resolve(data),
     } as any);
   }

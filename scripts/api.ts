@@ -16,10 +16,29 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 1000):
       return await fn();
     } catch (err) {
       if (i === attempts - 1) throw err;
-      await new Promise(r => setTimeout(r, delayMs * (i + 1)));
+      const isRateLimit = err instanceof Error && (
+        err.message.includes('429') ||
+        err.message.includes('<!doctype') ||
+        err.message.includes('is not valid JSON')
+      );
+      const wait = isRateLimit ? Math.max(delayMs * (i + 1), 3000) * (i + 1) : delayMs * (i + 1);
+      if (isRateLimit) console.warn(`Rate limited, waiting ${Math.round(wait / 1000)}s before retry...`);
+      await new Promise(r => setTimeout(r, wait));
     }
   }
   throw new Error('Unreachable');
+}
+
+async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  const response = await fetch(url, init);
+  if (response.status === 429) {
+    throw new Error('429 Too Many Requests');
+  }
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('json')) {
+    throw new Error(`Expected JSON but got ${contentType}. Status: ${response.status}`);
+  }
+  return response;
 }
 
 // ============ Token List / Portfolio ============
@@ -27,7 +46,7 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 1000):
 export async function getTokenBalances(userAddress: string): Promise<TokenBalance[]> {
   return withRetry(async () => {
     const url = `${BUNGEE_API}/api/v1/tokens/list?userAddress=${userAddress}`;
-    const response = await fetch(url);
+    const response = await safeFetch(url);
     const data = await response.json() as { success?: boolean; result?: Record<string, TokenBalance[]> };
 
     if (!data.success || !data.result) {
@@ -52,7 +71,7 @@ export async function getTokenBalances(userAddress: string): Promise<TokenBalanc
 export async function searchTokens(query: string, userAddress?: string): Promise<TokenSearchResult[]> {
   let url = `${BUNGEE_API}/api/v1/tokens/search?q=${encodeURIComponent(query)}`;
   if (userAddress) url += `&address=${userAddress}`;
-  const response = await fetch(url);
+  const response = await safeFetch(url);
   const data = await response.json() as { success?: boolean; result?: any };
 
   if (!data.success || !data.result) {
@@ -126,7 +145,7 @@ export async function getQuote(params: QuoteParams): Promise<QuoteResult> {
   return withRetry(async () => {
     const quoteParams = buildQuoteParams(params);
     const url = `${BUNGEE_API}/api/v1/bungee/quote?${quoteParams}`;
-    const response = await fetch(url);
+    const response = await safeFetch(url);
     const data = await response.json() as Record<string, unknown>;
     const serverReqId = response.headers.get('server-req-id');
 
@@ -170,7 +189,7 @@ export async function getQuote(params: QuoteParams): Promise<QuoteResult> {
 // ============ Status ============
 
 export async function getStatus(requestHash: string): Promise<BungeeStatusResult[]> {
-  const response = await fetch(`${BUNGEE_API}/api/v1/bungee/status?requestHash=${requestHash}`);
+  const response = await safeFetch(`${BUNGEE_API}/api/v1/bungee/status?requestHash=${requestHash}`);
   const data = await response.json() as { success?: boolean; result?: BungeeStatusResult[]; error?: { message: string } };
 
   if (!data.success || !data.result) {
@@ -189,7 +208,7 @@ export async function submitPermit2(payload: {
   quoteId: string;
 }): Promise<string> {
   return withRetry(async () => {
-    const response = await fetch(`${BUNGEE_API}/api/v1/bungee/submit`, {
+    const response = await safeFetch(`${BUNGEE_API}/api/v1/bungee/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
