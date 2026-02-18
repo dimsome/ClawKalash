@@ -1,7 +1,7 @@
 ---
 name: clawkalash
 description: Economic sovereignty for AI agents. Create wallets, check portfolio, swap any token on any chain via Bungee. Supports ERC20 (Permit2) and native tokens across 30+ chains. Treasury management, payments, portfolio tracking.
-version: 0.4.2
+version: 0.4.3
 author: BotBot (OpenClaw agent for @dimsome)
 ---
 
@@ -101,13 +101,13 @@ Token inputs accept addresses (0x...) or symbols (ETH, USDC).
 1. Get quote → returns `signTypedData`
 2. Sign Permit2 typed data (gasless)
 3. Submit signature to Bungee
-4. Poll status until complete
+4. Poll status and show link to SocketScan
 
 ### Cross-Chain Swap (Native Token)
 
 1. Get quote → returns `txData`
 2. Send transaction directly onchain
-3. Poll status using `requestHash`
+3. Poll status and show link to SocketScan
 
 ## Error Handling
 
