@@ -95,26 +95,58 @@ export async function searchTokens(query: string, userAddress?: string): Promise
   return flat;
 }
 
-// Search cache to avoid redundant API calls (5 calls/min limit)
-const searchCache = new Map<string, { results: TokenSearchResult[]; ts: number }>();
-const CACHE_TTL = 60_000; // 1 minute
+// ============ Token List Cache ============
 
-async function cachedSearch(query: string): Promise<TokenSearchResult[]> {
-  const key = query.toLowerCase();
-  const cached = searchCache.get(key);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.results;
-  const results = await searchTokens(query);
-  searchCache.set(key, { results, ts: Date.now() });
-  return results;
+let tokenListCache: { tokens: TokenSearchResult[]; ts: number } | null = null;
+const TOKEN_LIST_TTL = 5 * 60_000; // 5 minutes
+
+async function getTokenList(): Promise<TokenSearchResult[]> {
+  if (tokenListCache && Date.now() - tokenListCache.ts < TOKEN_LIST_TTL) {
+    return tokenListCache.tokens;
+  }
+  const response = await safeFetch(`${BUNGEE_API}/api/v1/tokens/list`);
+  const data = await response.json() as { success?: boolean; result?: Record<string, TokenSearchResult[]> };
+  if (!data.success || !data.result) {
+    throw new Error('Failed to fetch token list');
+  }
+  const flat: TokenSearchResult[] = [];
+  for (const chainTokens of Object.values(data.result)) {
+    if (Array.isArray(chainTokens)) flat.push(...chainTokens);
+  }
+  flat.sort((a, b) => {
+    const aScore = (a.isShortListed ? 2 : 0) + (a.isVerified ? 1 : 0);
+    const bScore = (b.isShortListed ? 2 : 0) + (b.isVerified ? 1 : 0);
+    return bScore - aScore;
+  });
+  tokenListCache = { tokens: flat, ts: Date.now() };
+  return flat;
 }
 
 /**
  * Resolve a token by address or symbol on a specific chain.
- * Relies on Bungee's search endpoint which handles both.
+ * First tries the full token list (single cached API call).
+ * Falls back to search for tokens not in the default list.
  */
 export async function resolveToken(input: string, chainId: number): Promise<{ address: string; symbol: string; decimals: number }> {
   const isAddress = input.startsWith('0x') && input.length === 42;
-  const results = await cachedSearch(input);
+
+  // Try token list first (cached, one API call covers everything)
+  const list = await getTokenList();
+
+  if (isAddress) {
+    const match = list.find(t => t.address.toLowerCase() === input.toLowerCase() && t.chainId === chainId);
+    if (match) return { address: match.address, symbol: match.symbol, decimals: match.decimals };
+    const anyMatch = list.find(t => t.address.toLowerCase() === input.toLowerCase());
+    if (anyMatch) return { address: input, symbol: anyMatch.symbol, decimals: anyMatch.decimals };
+  } else {
+    const exactOnChain = list.find(
+      t => t.symbol.toLowerCase() === input.toLowerCase() && t.chainId === chainId
+    );
+    if (exactOnChain) return { address: exactOnChain.address, symbol: exactOnChain.symbol, decimals: exactOnChain.decimals };
+  }
+
+  // Fallback: search API for tokens not in default list
+  const results = await searchTokens(input);
 
   if (isAddress) {
     const match = results.find(t => t.address.toLowerCase() === input.toLowerCase() && t.chainId === chainId);
@@ -125,13 +157,11 @@ export async function resolveToken(input: string, chainId: number): Promise<{ ad
     return { address: input, symbol: input.slice(0, 8), decimals: 18 };
   }
 
-  // Exact symbol match on target chain
   const exactOnChain = results.find(
     t => t.symbol.toLowerCase() === input.toLowerCase() && t.chainId === chainId
   );
   if (exactOnChain) return { address: exactOnChain.address, symbol: exactOnChain.symbol, decimals: exactOnChain.decimals };
 
-  // Any match on target chain
   const onChain = results.find(t => t.chainId === chainId);
   if (onChain) return { address: onChain.address, symbol: onChain.symbol, decimals: onChain.decimals };
 
