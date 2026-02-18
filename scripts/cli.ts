@@ -16,7 +16,7 @@ export function formatPortfolio(tokens: TokenBalance[]): string {
 
   const totalUsd = tokens.reduce((sum, t) => sum + t.balanceInUsd, 0);
   const lines = tokens.map(t => {
-    const amount = (Number(t.balance) / Math.pow(10, t.decimals)).toFixed(t.decimals > 6 ? 6 : 2);
+    const amount = (Number(t.balance) / Math.pow(10, t.decimals)).toFixed(Math.min(t.decimals, 6));
     return `  ${t.symbol} (${getChainName(t.chainId)}): ${amount} ($${t.balanceInUsd.toFixed(2)})`;
   });
 
@@ -216,7 +216,20 @@ async function handleSwap(args: string[], flags: Record<string, string | boolean
     account = privateKeyToAccount(normalized as `0x${string}`);
   }
 
-  const parsedAmount = parseAmount(amount, resolvedInput.decimals);
+  let parsedAmount = parseAmount(amount, resolvedInput.decimals);
+
+  // Check on-chain balance and cap to actual balance to avoid "transfer amount exceeds balance"
+  try {
+    const balances = await getTokenBalances(account.address);
+    const tokenBalance = balances.find(
+      t => t.address.toLowerCase() === resolvedInput.address.toLowerCase() && t.chainId === originChainId
+    );
+    if (tokenBalance && BigInt(parsedAmount) > BigInt(tokenBalance.balance)) {
+      console.log(`Adjusting amount to actual balance: ${tokenBalance.balance} (was ${parsedAmount})`);
+      parsedAmount = tokenBalance.balance;
+    }
+  } catch { /* non-critical, proceed with parsed amount */ }
+
   console.log('Getting quote...');
   const quote = await getQuote({
     userAddress: account.address,
