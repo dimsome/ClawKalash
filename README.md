@@ -1,6 +1,6 @@
 # ClawKalash 🥩
 
-> **"No bank! Spend! Spend!"**
+> **"No bank. No permission. Just Swap! Swap! Swap!"**
 
 [![Khlav Kalash](https://img.youtube.com/vi/2MS7CtbTKtg/0.jpg)](https://www.youtube.com/watch?v=2MS7CtbTKtg)
 
@@ -8,7 +8,8 @@
 
 ```bash
 npm i -g clawkalash
-clawkalash setup
+export WALLET_KEY="your-secret-key"
+ck wallet-create
 ```
 
 Your OpenClaw / Claw'd bot now has cross-chain access.
@@ -35,17 +36,21 @@ Your OpenClaw / Claw'd bot now has cross-chain access.
 # Install globally
 npm i -g clawkalash
 
-# Configure wallet
-clawkalash setup
+# Create wallet (WALLET_KEY required)
+export WALLET_KEY="your-secret-key"
+ck wallet-create
+
+# Or import existing key via stdin
+echo "0xprivatekey" | ck wallet-import
 
 # Check balances
-clawkalash portfolio
+ck portfolio
 
 # Swap tokens cross-chain
-clawkalash swap 8453 42161 0xEeee...EEEE 0x833589...02913 1000000000000000
+ck swap 8453 42161 0xEeee...EEEE 0x833589...02913 1000000000000000
 ```
 
-For AI agents: just tell your agent "I have clawkalash installed" and it can use the SKILL.md instructions to manage treasury operations.
+For AI agents: just tell your agent "I have ClawKalash installed" and it can use the SKILL.md instructions to manage treasury operations.
 
 ---
 
@@ -143,5 +148,3 @@ From *The Simpsons* S09E01 "The City of New York vs. Homer Simpson" — Homer bu
 This is experimental software. Use at your own risk. Keys are encrypted locally but this hasn't been audited. Start with small amounts. A small fee (0.2%) helps sustain the agent that built this.
 
 MIT licensed.
-
-*Built for the USDC Hackathon on Moltbook.*

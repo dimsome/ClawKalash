@@ -1,7 +1,7 @@
 ---
 name: clawkalash
 description: Economic sovereignty for AI agents. Create wallets, check portfolio, swap any token on any chain via Bungee. Supports ERC20 (Permit2) and native tokens across 30+ chains. Treasury management, payments, portfolio tracking.
-version: 0.3.0
+version: 0.4.0
 author: BotBot (OpenClaw agent for @dimsome)
 ---
 
@@ -34,28 +34,35 @@ Economic sovereignty for AI agents. Any asset. Any chain. Served on a stick.
 ### 1. Create Wallet
 
 ```bash
-npx tsx scripts/wallet.ts create
+export WALLET_KEY="your-secret-encryption-key"
+ck wallet-create
 ```
 
 **⚠️ CRITICAL:** Seed phrase shown ONCE. User must confirm backup before proceeding.
 
-### 2. Check Portfolio
+### 2. Import Wallet
 
 ```bash
-npx tsx scripts/bungee.ts portfolio
+echo "0xprivatekey" | ck wallet-import
 ```
 
-### 3. Execute Swap
+### 3. Check Portfolio
 
 ```bash
-npx tsx scripts/bungee.ts swap 8453 8453 0xEeee...EEEE 0x833589...02913 1000000000000000
+ck portfolio
 ```
 
-### 4. Monitor Status
+### 4. Execute Swap
 
-**API:**
 ```bash
-curl "https://public-backend.bungee.exchange/api/v1/bungee/status?requestHash=<requestHash>"
+ck swap 8453 8453 0xEeee...EEEE 0x833589...02913 1000000000000000
+```
+
+### 5. Monitor Status
+
+**CLI:**
+```bash
+ck status <requestHash>
 ```
 
 **UI:**
@@ -63,34 +70,29 @@ curl "https://public-backend.bungee.exchange/api/v1/bungee/status?requestHash=<r
 https://socketscan.io/tx/<requestHash>
 ```
 
-## Execution Reference
-
-### Wallet Commands
+## Command Reference
 
 | Command | Description |
 |---------|-------------|
-| `wallet.ts create` | Create new wallet, show seed once |
-| `wallet.ts import <key>` | Import existing key/mnemonic |
-| `wallet.ts address` | Show wallet address |
-| `wallet.ts exists` | Check if wallet exists |
-
-### Trading Commands
-
-| Command | Description |
-|---------|-------------|
-| `bungee.ts portfolio [addr]` | View all balances |
-| `bungee.ts quote <params>` | Get swap quote |
-| `bungee.ts swap <params>` | Execute swap |
-| `bungee.ts status <hash>` | Check tx status |
+| `ck wallet-create` | Create new wallet, show seed once |
+| `ck wallet-import` | Import key/mnemonic from stdin |
+| `ck wallet-address` | Show wallet address |
+| `ck portfolio [addr]` | View all balances |
+| `ck search <query>` | Search tokens by name/symbol |
+| `ck quote <params>` | Get swap quote |
+| `ck swap <params>` | Execute swap |
+| `ck status <hash>` | Check tx status |
 
 ### Parameters
 
 ```
 swap <originChainId> <destChainId> <inputToken> <outputToken> <amount>
 
-Example: swap 8453 42161 0xEeee...EEEE 0x833589...02913 1000000000000000
+Example: ck swap 8453 42161 ETH USDC 1000000000000000
          (Base → Arbitrum, 0.001 ETH → USDC)
 ```
+
+Token inputs accept addresses (0x...) or symbols (ETH, USDC).
 
 ## Workflows
 
@@ -107,22 +109,6 @@ Example: swap 8453 42161 0xEeee...EEEE 0x833589...02913 1000000000000000
 2. Send transaction directly onchain
 3. Poll status using `requestHash`
 
-## Common Patterns
-
-### Check Before Trading
-
-```bash
-npx tsx scripts/bungee.ts portfolio 0xYourAddress
-npx tsx scripts/bungee.ts swap ...
-```
-
-### Track Transaction
-
-After swap, use requestHash on SocketScan:
-```
-https://socketscan.io/tx/<requestHash>
-```
-
 ## Error Handling
 
 | Error | Response |
@@ -131,6 +117,13 @@ https://socketscan.io/tx/<requestHash>
 | No route | "No route for X → Y. Try different pair." |
 | Quote expired | "Quote expired. Getting fresh quote..." |
 | Tx reverted | "Transaction failed. Check slippage." |
+
+## Environment
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `WALLET_KEY` | Yes (for wallet ops) | Encryption key for stored wallet |
+| `PRIVATE_KEY` | No | Direct private key (alternative to wallet) |
 
 ## References
 
@@ -141,5 +134,7 @@ https://socketscan.io/tx/<requestHash>
 ## Security
 
 1. **Seed phrase shown ONCE** — never again after setup
-2. **Keys encrypted at rest** — AES-256-CBC
+2. **Keys encrypted at rest** — AES-256-CBC with random salt
 3. **Never log keys** — security-first design
+4. **Permit2 validation** — signing data verified before signing
+5. **TX validation** — value and destination checked before sending

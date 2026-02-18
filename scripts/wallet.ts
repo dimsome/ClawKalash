@@ -7,30 +7,41 @@ import { privateKeyToAccount, generateMnemonic, mnemonicToAccount, english } fro
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 
-const WALLET_PATH = process.env.WALLET_PATH || './.wallet.enc';
-const ENCRYPTION_KEY = process.env.WALLET_KEY || 'clawkalash-default-key-change-me';
+function getWalletPath(): string {
+  return process.env.WALLET_PATH || './.wallet.enc';
+}
+
+function getEncryptionKey(): string {
+  const key = process.env.WALLET_KEY;
+  if (!key) {
+    throw new Error('Set WALLET_KEY environment variable before creating or accessing a wallet');
+  }
+  return key;
+}
 
 interface WalletData {
   address: string;
   encryptedKey: string;
   iv: string;
+  salt: string;
   createdAt: string;
 }
 
 // ============ Encryption ============
 
-function encrypt(text: string, password: string): { encrypted: string; iv: string } {
-  const key = crypto.scryptSync(password, 'salt', 32);
+export function encrypt(text: string, password: string): { encrypted: string; iv: string; salt: string } {
+  const salt = crypto.randomBytes(16);
+  const key = crypto.scryptSync(password, new Uint8Array(salt), 32);
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  const cipher = crypto.createCipheriv('aes-256-cbc', new Uint8Array(key), new Uint8Array(iv));
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  return { encrypted, iv: iv.toString('hex') };
+  return { encrypted, iv: iv.toString('hex'), salt: salt.toString('hex') };
 }
 
-function decrypt(encrypted: string, iv: string, password: string): string {
-  const key = crypto.scryptSync(password, 'salt', 32);
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, Buffer.from(iv, 'hex'));
+export function decrypt(encrypted: string, iv: string, salt: string, password: string): string {
+  const key = crypto.scryptSync(password, new Uint8Array(Buffer.from(salt, 'hex')), 32);
+  const decipher = crypto.createDecipheriv('aes-256-cbc', new Uint8Array(key), new Uint8Array(Buffer.from(iv, 'hex')));
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   return decrypted;
@@ -39,23 +50,26 @@ function decrypt(encrypted: string, iv: string, password: string): string {
 // ============ Wallet Operations ============
 
 export function createWallet(): { mnemonic: string; address: string } {
+  const encryptionKey = getEncryptionKey();
   const mnemonic = generateMnemonic(english);
   const account = mnemonicToAccount(mnemonic);
   
-  const { encrypted, iv } = encrypt(mnemonic, ENCRYPTION_KEY);
+  const { encrypted, iv, salt } = encrypt(mnemonic, encryptionKey);
   const walletData: WalletData = {
     address: account.address,
     encryptedKey: encrypted,
     iv,
+    salt,
     createdAt: new Date().toISOString(),
   };
   
-  fs.writeFileSync(WALLET_PATH, JSON.stringify(walletData, null, 2));
+  fs.writeFileSync(getWalletPath(), JSON.stringify(walletData, null, 2), { mode: 0o600 });
   
   return { mnemonic, address: account.address };
 }
 
 export function importWallet(privateKeyOrMnemonic: string): string {
+  const encryptionKey = getEncryptionKey();
   let address: string;
   let toEncrypt: string;
   
@@ -72,25 +86,30 @@ export function importWallet(privateKeyOrMnemonic: string): string {
     toEncrypt = normalized;
   }
   
-  const { encrypted, iv } = encrypt(toEncrypt, ENCRYPTION_KEY);
+  const { encrypted, iv, salt } = encrypt(toEncrypt, encryptionKey);
   const walletData: WalletData = {
     address,
     encryptedKey: encrypted,
     iv,
+    salt,
     createdAt: new Date().toISOString(),
   };
   
-  fs.writeFileSync(WALLET_PATH, JSON.stringify(walletData, null, 2));
+  fs.writeFileSync(getWalletPath(), JSON.stringify(walletData, null, 2), { mode: 0o600 });
   return address;
 }
 
 export function loadWallet(): { address: string; privateKey: string } | null {
-  if (!fs.existsSync(WALLET_PATH)) {
+  if (!fs.existsSync(getWalletPath())) {
     return null;
   }
   
-  const data: WalletData = JSON.parse(fs.readFileSync(WALLET_PATH, 'utf8'));
-  const decrypted = decrypt(data.encryptedKey, data.iv, ENCRYPTION_KEY);
+  const encryptionKey = getEncryptionKey();
+  const data: WalletData = JSON.parse(fs.readFileSync(getWalletPath(), 'utf8'));
+  
+  // Support legacy wallets without salt (use 'salt' string as before)
+  const salt = data.salt || Buffer.from('salt').toString('hex');
+  const decrypted = decrypt(data.encryptedKey, data.iv, salt, encryptionKey);
   
   if (decrypted.includes(' ')) {
     const account = mnemonicToAccount(decrypted);
@@ -101,95 +120,13 @@ export function loadWallet(): { address: string; privateKey: string } | null {
 }
 
 export function getWalletAddress(): string | null {
-  if (!fs.existsSync(WALLET_PATH)) {
+  if (!fs.existsSync(getWalletPath())) {
     return null;
   }
-  const data: WalletData = JSON.parse(fs.readFileSync(WALLET_PATH, 'utf8'));
+  const data: WalletData = JSON.parse(fs.readFileSync(getWalletPath(), 'utf8'));
   return data.address;
 }
 
 export function walletExists(): boolean {
-  return fs.existsSync(WALLET_PATH);
-}
-
-// ============ CLI ============
-
-// Only run CLI when called directly (not when imported)
-const isMainModule = import.meta.url === `file://${process.argv[1]}` || 
-                     process.argv[1]?.endsWith('wallet.ts');
-
-async function main() {
-  if (!isMainModule) return;
-  const args = process.argv.slice(2);
-  const [action] = args;
-
-  if (action === 'create') {
-    if (walletExists()) {
-      console.error('❌ Wallet already exists. Delete .wallet.enc to create a new one.');
-      process.exit(1);
-    }
-    
-    const { mnemonic, address } = createWallet();
-    console.log(`
-🔐 ClawKalash Treasury Created
-
-⚠️  CRITICAL: Save this seed phrase NOW.
-    It will NEVER be shown again.
-
-┌────────────────────────────────────────────────────────────┐
-  ${mnemonic}
-└────────────────────────────────────────────────────────────┘
-
-📍 Address: ${address}
-
-After saving securely, delete this terminal output.
-`);
-    return;
-  }
-
-  if (action === 'import') {
-    const keyOrMnemonic = args.slice(1).join(' ');
-    if (!keyOrMnemonic) {
-      console.error('Usage: npx tsx wallet.ts import <private-key-or-mnemonic>');
-      process.exit(1);
-    }
-    
-    const address = importWallet(keyOrMnemonic);
-    console.log(`✅ Wallet imported: ${address}`);
-    console.log('⚠️  Delete the command containing your key from terminal history!');
-    return;
-  }
-
-  if (action === 'address') {
-    const address = getWalletAddress();
-    if (!address) {
-      console.error('No wallet found. Run: npx tsx wallet.ts create');
-      process.exit(1);
-    }
-    console.log(address);
-    return;
-  }
-
-  if (action === 'exists') {
-    console.log(walletExists() ? 'true' : 'false');
-    return;
-  }
-
-  console.log(`
-ClawKalash Wallet Manager
-
-Usage:
-  npx tsx wallet.ts create              Create new wallet (shows seed ONCE)
-  npx tsx wallet.ts import <key|phrase> Import existing wallet
-  npx tsx wallet.ts address             Show wallet address
-  npx tsx wallet.ts exists              Check if wallet exists
-
-Environment:
-  WALLET_PATH  Path to encrypted wallet file (default: .wallet.enc)
-  WALLET_KEY   Encryption password (default: built-in, change for production!)
-`);
-}
-
-if (isMainModule) {
-  main().catch(console.error);
+  return fs.existsSync(getWalletPath());
 }

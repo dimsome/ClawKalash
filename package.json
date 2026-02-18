@@ -1,10 +1,10 @@
 {
   "name": "clawkalash",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Economic sovereignty for AI agents. Any asset. Any chain. Served on a stick.",
   "type": "module",
   "bin": {
-    "clawkalash": "bin/clawkalash.js"
+    "ck": "bin/clawkalash.js"
   },
   "files": [
     "bin",
@@ -13,13 +13,14 @@
     "README.md"
   ],
   "scripts": {
-    "build": "esbuild scripts/bungee.ts scripts/wallet.ts --bundle --platform=node --outdir=dist --format=esm --external:viem",
+    "build": "esbuild scripts/cli.ts scripts/wallet.ts --bundle --platform=node --outdir=dist --format=esm --external:viem",
     "prepublishOnly": "npm run build",
-    "wallet": "tsx scripts/wallet.ts",
-    "portfolio": "tsx scripts/bungee.ts portfolio",
-    "quote": "tsx scripts/bungee.ts quote",
-    "swap": "tsx scripts/bungee.ts swap",
-    "status": "tsx scripts/bungee.ts status"
+    "test": "vitest run",
+    "portfolio": "tsx scripts/cli.ts portfolio",
+    "quote": "tsx scripts/cli.ts quote",
+    "swap": "tsx scripts/cli.ts swap",
+    "status": "tsx scripts/cli.ts status",
+    "search": "tsx scripts/cli.ts search"
   },
   "keywords": [
     "openclaw",
@@ -46,6 +47,7 @@
   "devDependencies": {
     "esbuild": "^0.27.3",
     "tsx": "^4.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.0"
   }
 }
