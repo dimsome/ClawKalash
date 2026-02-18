@@ -65,7 +65,7 @@ ck swap 8453 8453 0xEeee...EEEE 0x833589...02913 1000000000000000
 ck status <requestHash>
 ```
 
-**UI:**
+**ALWAYS share the SocketScan link with the user:**
 ```
 https://socketscan.io/tx/<requestHash>
 ```
@@ -108,6 +108,11 @@ Token inputs accept addresses (0x...) or symbols (ETH, USDC).
 1. Get quote → returns `txData`
 2. Send transaction directly onchain
 3. Poll status and show link to SocketScan
+
+> **⚠️ IMPORTANT: After every swap or status check, you MUST share the SocketScan link with the user:**
+> `https://socketscan.io/tx/<requestHash>`
+>
+> This is the user's only way to independently verify and track their transaction. Never skip this step. NEVER SKIP LEG DAY.
 
 ## Error Handling
 
